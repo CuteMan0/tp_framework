@@ -181,11 +181,11 @@ int8_t TPF_Suspend(tp_frame_t *pstpfhandle, uint32_t task_id)
     if (TPF_TASK_SLEEP != pstpfhandle->pftasklist->state)
     {
         pstpfhandle->pftasklist->state = TPF_TASK_SLEEP;
-
-        // restore enter task
-        pstpfhandle->pftasklist -= task_id;
-        pstpfhandle->pftasklist += task_offset;
     }
+
+    // restore enter task
+    pstpfhandle->pftasklist -= task_id;
+    pstpfhandle->pftasklist += task_offset;
 
     if (NULL == pstpfhandle->pftasklist->pff)
     {
@@ -215,11 +215,11 @@ int8_t TPF_Resume(tp_frame_t *pstpfhandle, uint32_t task_id)
     if (TPF_TASK_READY != pstpfhandle->pftasklist->state)
     {
         pstpfhandle->pftasklist->state = TPF_TASK_READY;
-
-        // restore enter task
-        pstpfhandle->pftasklist -= task_id;
-        pstpfhandle->pftasklist += task_offset;
     }
+
+    // restore enter task
+    pstpfhandle->pftasklist -= task_id;
+    pstpfhandle->pftasklist += task_offset;
 
     if (NULL == pstpfhandle->pftasklist->pff)
     {
