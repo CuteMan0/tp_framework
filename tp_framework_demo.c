@@ -15,7 +15,7 @@
 
 static uint32_t newtick;
 
-__attribute__((weak)) void TPF_ErrorHandler(tp_tasklist_t *pftasklist, int8_t error)
+__attribute__((weak)) void TPF_ErrorHandler(tpf_tasklist_t *pftasklist, int8_t error)
 {
     while (1)
     {
@@ -72,7 +72,7 @@ int8_t TPF_Handler(tp_frame_t *pstpfhandle)
     return 0;
 }
 
-int8_t TPF_Init(tp_frame_t *pstpfhandle, tp_tasklist_t *psatasklist)
+int8_t TPF_Init(tp_frame_t *pstpfhandle, tpf_tasklist_t *psatasklist)
 {
     if (NULL == pstpfhandle)
     {
@@ -91,7 +91,7 @@ int8_t TPF_Init(tp_frame_t *pstpfhandle, tp_tasklist_t *psatasklist)
 
 void TPF_Task_Delay(tp_frame_t *pstpfhandle, uint32_t task_id, uint32_t delay)
 {
-    uint32_t address_offset = ((uint32_t)pstpfhandle - (uint32_t)pstpfhandle->pftasklist) / sizeof(tp_tasklist_t);
+    uint32_t address_offset = ((uint32_t)pstpfhandle - (uint32_t)pstpfhandle->pftasklist) / sizeof(tpf_tasklist_t);
     uint32_t task_offset = pstpfhandle->tasknum - address_offset; // little endian
 
     if (NULL == pstpfhandle->pftasklist->pff)
@@ -123,7 +123,7 @@ void TPF_Task_Delay(tp_frame_t *pstpfhandle, uint32_t task_id, uint32_t delay)
 void TPF_Global_Delay(tp_frame_t *pstpfhandle, uint32_t delay)
 {
 
-    uint32_t address_offset = ((uint32_t)pstpfhandle - (uint32_t)pstpfhandle->pftasklist) / sizeof(tp_tasklist_t);
+    uint32_t address_offset = ((uint32_t)pstpfhandle - (uint32_t)pstpfhandle->pftasklist) / sizeof(tpf_tasklist_t);
     uint32_t task_offset = pstpfhandle->tasknum - address_offset; // little endian
 
     for (uint32_t i = 0; i < address_offset; i++)

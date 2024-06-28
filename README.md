@@ -18,7 +18,7 @@
 
 - 创建 `tp_frame_t` 实例作为框架句柄。
 
-- 创建 `tp_tasklist_t` 实例作为任务表句柄，在表中填入任务函数及时间片。
+- 创建 `tpf_tasklist_t` 实例作为任务表句柄，在表中填入任务函数及时间片。
 
 - 调用`GET_TASK_NUMS_()`宏，统计任务表的任务量。
 
@@ -35,18 +35,20 @@
 
 - 表头固定为`{NULL, 0, 0}`,用作统计任务量。
 
-- 通过创建、删除表成员来增、减任务，表成员的三个参数依次为：
+- 通过创建、删除表成员来增、减任务，表成员的四个参数依次为：
   - 任务函数指针
   - 任务的时间片
+  - 任务初始状态
   - 上次运行时间
 
 ```c
 typedef struct
 {
   void (*pff)();
-  uint32_t runtick;
+  uint32_t runtick : 31;
+  TPF_STATE_E state : 1;
   uint32_t entrytick;
-} tp_tasklist_t;
+} tpf_tasklist_t;
 ```
 
 ---
@@ -61,7 +63,7 @@ func
   --- TPF_GetTicks()
     return
       --- newtick                   --- 最新时基数
-  --- TPF_Init(tp_frame_t *,tp_tasklist_t *)
+  --- TPF_Init(tp_frame_t *,tpf_tasklist_t *)
     params
       --- pstpfhandle               --- TPF句柄
       --- psatasklist               --- 任务表句柄
@@ -103,17 +105,18 @@ void Task1(void)
 }
 
 tp_frame_t tp_frame;
-tp_tasklist_t tp_tasklist[] = {
-      {NULL, 0, 0}, // dont change and use this var
-//(taskfunc),(task_runtime),always 0
-      {Task0, 1000, 0},
-      {Task1, 200, 0}
-
+tpf_tasklist_t tpf_tasklist[] = {
+      {NULL, 0, 0, 0}, // dont change and use this var
+//(taskfunc),(task_runtime),task_state,always 0
+      {Task0, 1000, TP_TASK_READY, 0},
+      {Task1, 200, TP_TASK_READY, 0}
+//      ...
 };
+
 int main(void)
 {
-  GET_TASK_NUMS_(tp_tasklist);
-  TPF_Init(&tp_frame, tp_tasklist);
+  GET_TASK_NUMS_(tpf_tasklist);
+  TPF_Init(&tp_frame, tpf_tasklist);
 
   while(1)
   {
