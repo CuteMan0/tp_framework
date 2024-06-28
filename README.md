@@ -124,7 +124,7 @@ func
 
 ### 演示模板
 
-![](/pic/tpf_demo.gif)
+![image](https://github.com/CuteMan0/tp_framework_demo/blob/main/pic/tpf_demo.gif)
 
 ```C
 /*----------------------  it.c  ----------------------*/
