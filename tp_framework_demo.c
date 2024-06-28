@@ -67,9 +67,9 @@ int8_t TPF_Handler(tp_frame_t *pstpfhandle)
             pstpfhandle->pftasklist -= i;
             i = 0;
         }
-
-        return 0;
     }
+
+    return 0;
 }
 
 int8_t TPF_Init(tp_frame_t *pstpfhandle, tp_tasklist_t *psatasklist)
@@ -94,23 +94,45 @@ void TPF_Task_Delay(tp_frame_t *pstpfhandle, uint32_t task_id, uint32_t delay)
     uint32_t address_offset = ((uint32_t)pstpfhandle - (uint32_t)pstpfhandle->pftasklist) / sizeof(tp_tasklist_t);
     uint32_t task_offset = pstpfhandle->tasknum - address_offset; // little endian
 
+    if (NULL == pstpfhandle->pftasklist->pff)
+    {
+        TPF_ErrorHandler(pstpfhandle->pftasklist, 0);
+    }
+
     // change target task entrytick
     pstpfhandle->pftasklist -= task_offset;
     pstpfhandle->pftasklist += task_id;
+
+    if (NULL == pstpfhandle->pftasklist->pff)
+    {
+        TPF_ErrorHandler(pstpfhandle->pftasklist, 0);
+    }
+
     pstpfhandle->pftasklist->entrytick += delay;
 
     // restore enter task
     pstpfhandle->pftasklist -= task_id;
     pstpfhandle->pftasklist += task_offset;
+
+    if (NULL == pstpfhandle->pftasklist->pff)
+    {
+        TPF_ErrorHandler(pstpfhandle->pftasklist, 0);
+    }
 }
 
 void TPF_Global_Delay(tp_frame_t *pstpfhandle, uint32_t delay)
 {
+
     uint32_t address_offset = ((uint32_t)pstpfhandle - (uint32_t)pstpfhandle->pftasklist) / sizeof(tp_tasklist_t);
     uint32_t task_offset = pstpfhandle->tasknum - address_offset; // little endian
 
     for (uint32_t i = 0; i < address_offset; i++)
     {
+        if (NULL == pstpfhandle->pftasklist->pff)
+        {
+            TPF_ErrorHandler(pstpfhandle->pftasklist, 0);
+        }
+
         pstpfhandle->pftasklist->entrytick += delay;
         pstpfhandle->pftasklist++;
     }
@@ -118,16 +140,26 @@ void TPF_Global_Delay(tp_frame_t *pstpfhandle, uint32_t delay)
 
     for (uint32_t i = 0; i < task_offset; i++)
     {
+        if (NULL == pstpfhandle->pftasklist->pff)
+        {
+            TPF_ErrorHandler(pstpfhandle->pftasklist, 0);
+        }
+
         pstpfhandle->pftasklist->entrytick += delay;
         pstpfhandle->pftasklist++;
+    }
+
+    if (NULL == pstpfhandle->pftasklist->pff)
+    {
+        TPF_ErrorHandler(pstpfhandle->pftasklist, 0);
     }
 }
 
 /*****************************test functions start*********************************/
-int8_t TPF_Suspend(tp_frame_t *pstpfhandle, uint32_t timeout)
+int8_t TPF_Suspend(tp_frame_t *pstpfhandle, uint32_t task_id)
 {
 }
-int8_t TPF_Resume(tp_frame_t *pstpfhandle)
+int8_t TPF_Resume(tp_frame_t *pstpfhandle, uint32_t task_id)
 {
 }
 
