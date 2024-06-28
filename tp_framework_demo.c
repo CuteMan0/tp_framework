@@ -11,7 +11,6 @@
  */
 
 #include "tp_framework_demo.h"
-#include "stm32f1xx_hal.h"
 
 static uint32_t newtick;
 
