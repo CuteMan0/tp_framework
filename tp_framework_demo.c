@@ -42,7 +42,8 @@ uint32_t TPF_GetTicks(void)
 
 int8_t TPF_Handler(tp_frame_t *pstpfhandle)
 {
-    for (uint8_t i = 0; i < pstpfhandle->tasknum; pstpfhandle->pftasklist++)
+    static uint32_t i = 0;
+    if (i < pstpfhandle->tasknum)
     {
         i++;
         // check task func pointer
@@ -58,10 +59,17 @@ int8_t TPF_Handler(tp_frame_t *pstpfhandle)
             // task running
             pstpfhandle->pftasklist->pff();
         }
-    }
-    pstpfhandle->pftasklist -= pstpfhandle->tasknum;
 
-    return 0;
+        pstpfhandle->pftasklist++;
+
+        if (i == pstpfhandle->tasknum)
+        {
+            pstpfhandle->pftasklist -= i;
+            i = 0;
+        }
+
+        return 0;
+    }
 }
 
 int8_t TPF_Init(tp_frame_t *pstpfhandle, tp_tasklist_t *psatasklist)
@@ -80,3 +88,47 @@ int8_t TPF_Init(tp_frame_t *pstpfhandle, tp_tasklist_t *psatasklist)
 
     return 0;
 }
+
+void TPF_Task_Delay(tp_frame_t *pstpfhandle, uint32_t task_id, uint32_t delay)
+{
+    uint32_t address_offset = ((uint32_t)pstpfhandle - (uint32_t)pstpfhandle->pftasklist) / sizeof(tp_tasklist_t);
+    uint32_t task_offset = pstpfhandle->tasknum - address_offset; // little endian
+
+    // change target task entrytick
+    pstpfhandle->pftasklist -= task_offset;
+    pstpfhandle->pftasklist += task_id;
+    pstpfhandle->pftasklist->entrytick += delay;
+
+    // restore enter task
+    pstpfhandle->pftasklist -= task_id;
+    pstpfhandle->pftasklist += task_offset;
+}
+
+void TPF_Global_Delay(tp_frame_t *pstpfhandle, uint32_t delay)
+{
+    uint32_t address_offset = ((uint32_t)pstpfhandle - (uint32_t)pstpfhandle->pftasklist) / sizeof(tp_tasklist_t);
+    uint32_t task_offset = pstpfhandle->tasknum - address_offset; // little endian
+
+    for (uint32_t i = 0; i < address_offset; i++)
+    {
+        pstpfhandle->pftasklist->entrytick += delay;
+        pstpfhandle->pftasklist++;
+    }
+    pstpfhandle->pftasklist -= pstpfhandle->tasknum;
+
+    for (uint32_t i = 0; i < task_offset; i++)
+    {
+        pstpfhandle->pftasklist->entrytick += delay;
+        pstpfhandle->pftasklist++;
+    }
+}
+
+/*****************************test functions start*********************************/
+int8_t TPF_Suspend(tp_frame_t *pstpfhandle, uint32_t timeout)
+{
+}
+int8_t TPF_Resume(tp_frame_t *pstpfhandle)
+{
+}
+
+/***************************** test functions end *********************************/
