@@ -166,20 +166,20 @@ int8_t TPF_Suspend(tp_frame_t *pstpfhandle, uint32_t task_id)
         TPF_ErrorHandler(pstpfhandle->pftasklist, 0);
     }
 
+    uint32_t address_offset = ((uint32_t)pstpfhandle - (uint32_t)pstpfhandle->pftasklist) / sizeof(tpf_tasklist_t);
+    uint32_t task_offset = pstpfhandle->tasknum - address_offset; // little endian
+
+    // change target task
+    pstpfhandle->pftasklist -= task_offset;
+    pstpfhandle->pftasklist += task_id;
+
+    if (NULL == pstpfhandle->pftasklist->pff)
+    {
+        TPF_ErrorHandler(pstpfhandle->pftasklist, 0);
+    }
+
     if (TPF_TASK_SLEEP != pstpfhandle->pftasklist->state)
     {
-        uint32_t address_offset = ((uint32_t)pstpfhandle - (uint32_t)pstpfhandle->pftasklist) / sizeof(tpf_tasklist_t);
-        uint32_t task_offset = pstpfhandle->tasknum - address_offset; // little endian
-
-        // change target task
-        pstpfhandle->pftasklist -= task_offset;
-        pstpfhandle->pftasklist += task_id;
-
-        if (NULL == pstpfhandle->pftasklist->pff)
-        {
-            TPF_ErrorHandler(pstpfhandle->pftasklist, 0);
-        }
-
         pstpfhandle->pftasklist->state = TPF_TASK_SLEEP;
 
         // restore enter task
@@ -200,20 +200,20 @@ int8_t TPF_Resume(tp_frame_t *pstpfhandle, uint32_t task_id)
         TPF_ErrorHandler(pstpfhandle->pftasklist, 0);
     }
 
+    uint32_t address_offset = ((uint32_t)pstpfhandle - (uint32_t)pstpfhandle->pftasklist) / sizeof(tpf_tasklist_t);
+    uint32_t task_offset = pstpfhandle->tasknum - address_offset; // little endian
+
+    // change target task
+    pstpfhandle->pftasklist -= task_offset;
+    pstpfhandle->pftasklist += task_id;
+
+    if (NULL == pstpfhandle->pftasklist->pff)
+    {
+        TPF_ErrorHandler(pstpfhandle->pftasklist, 0);
+    }
+
     if (TPF_TASK_READY != pstpfhandle->pftasklist->state)
     {
-        uint32_t address_offset = ((uint32_t)pstpfhandle - (uint32_t)pstpfhandle->pftasklist) / sizeof(tpf_tasklist_t);
-        uint32_t task_offset = pstpfhandle->tasknum - address_offset; // little endian
-
-        // change target task
-        pstpfhandle->pftasklist -= task_offset;
-        pstpfhandle->pftasklist += task_id;
-
-        if (NULL == pstpfhandle->pftasklist->pff)
-        {
-            TPF_ErrorHandler(pstpfhandle->pftasklist, 0);
-        }
-
         pstpfhandle->pftasklist->state = TPF_TASK_READY;
 
         // restore enter task
