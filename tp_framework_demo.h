@@ -53,7 +53,7 @@ int8_t TPF_Handler(tp_frame_t *pstpfhandle); // run in your timer interrupt
 
 void TPF_Task_Delay(tp_frame_t *pstpfhandle, uint32_t task_id, uint32_t delay);
 void TPF_Global_Delay(tp_frame_t *pstpfhandle, uint32_t delay);
-int8_t TPF_Suspend(tp_frame_t *pstpfhandle, uint32_t timeout);
-int8_t TPF_Resume(tp_frame_t *pstpfhandle);
+int8_t TPF_Suspend(tp_frame_t *pstpfhandle, uint32_t task_id);
+int8_t TPF_Resume(tp_frame_t *pstpfhandle, uint32_t task_id);
 
 #endif // !__TP_FRAMEWORK__
