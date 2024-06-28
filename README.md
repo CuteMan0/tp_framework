@@ -2,9 +2,9 @@
 
 ## 这是什么？
 
-**tp_framework_demo**是一个简易的**时间片轮询**裸机框架。目前仅支持任务轮询，后续会添加任务的挂起与就绪功能。
+**tp_framework_demo**是一个简易的**时间片轮询**裸机框架。支持**任务轮询**以及任务的**挂起**与**恢复**功能。
 
-**时间片轮询**是通过一个基本时钟（**systick** or **timer**），针对不同的任务对 CPU 的处理时间进行时分复用，根据任务列表顺序执行。避免单任务长时间占用 CPU，有一定的实时性 ~~不是很实时~~。
+**时间片轮询**是通过一个基本时钟（**systick** or **timer**），针对不同的任务对 CPU 的处理时间进行时分复用，根据任务列表顺序执行。避免单任务长时间占用 CPU，有一定的实时性~~不是很实时~~。
 
 ---
 
@@ -35,7 +35,9 @@
 
 - 表头固定为`{NULL, 0, 0, 0}`,用作统计任务量。
 
-- 通过创建、删除表成员来增、减任务，表成员的四个参数依次为：
+- **任务序号**：从第一个表成员（非表头）开始从**0**自增。
+
+- 通过在任务表中创建、删除表成员来增、减任务，表成员的四个参数依次为：
   - 任务函数指针
   - 任务的时间片
   - 任务初始状态
@@ -59,17 +61,54 @@ typedef struct
 
 ```
 func
+  更新时基
   --- TPF_Timebase_Int()
+
+  获取最新时基数
   --- TPF_GetTicks()
     return
-      --- newtick                   --- 最新时基数
-  --- TPF_Init(tp_frame_t *,tpf_tasklist_t *)
+      --- newtick         --- 最新时基数
+
+  框架初始化
+  --- TPF_Init(tp_frame_t * ,tpf_tasklist_t * )
     params
-      --- pstpfhandle               --- TPF句柄
-      --- psatasklist               --- 任务表句柄
-  --- TPF_Handler(tp_frame_t *)
+      --- pstpfhandle     --- TPF句柄
+      --- psatasklist     --- 任务表句柄
+
+  框架处理
+  --- TPF_Handler(tp_frame_t * )
     params
-      --- pstpfhandle               --- TPF句柄
+      --- pstpfhandle     --- TPF句柄
+
+  延时框架内某任务（非阻塞）
+  --- TPF_Task_Delay(tp_frame_t * , uint32_t , uint32_t )
+    params
+      --- pstpfhandle     --- TPF句柄
+      --- task_id         --- 任务序号
+      --- delay           --- 延时时间
+
+  延时框架内全部任务（非阻塞）
+  --- TPF_Global_Delay(tp_frame_t * , uint32_t )
+    params
+      --- pstpfhandle     --- TPF句柄
+      --- delay           --- 延时时间
+
+  挂起框架内某任务
+  --- TPF_Suspend(tp_frame_t * , uint32_t )
+    params
+      --- pstpfhandle     --- TPF句柄
+      --- task_id         --- 任务序号
+    return
+      --- 0               --- 一切向好
+
+  恢复框架内某任务
+  --- TPF_Resume(tp_frame_t * , uint32_t )
+    params
+      --- pstpfhandle     --- TPF句柄
+      --- task_id         --- 任务序号
+    return
+      --- 0               --- 一切向好
+
 ```
 
 #### TPF_ErrorHandler
@@ -89,22 +128,25 @@ func
 /*----------------------  it.c  ----------------------*/
 void SysTick_Handler()//TIMx_IRQHandler()
 {
-    TPF_Timebase_Int();
+  TPF_Timebase_Int();
 }
 
 /*---------------------  main.c  ---------------------*/
+static uint8_t task1_flag;
+
 void Task0(void)
 {
-    static uint32_t t0_cnt;
-    printf("T0:%d\r\n",t0_cnt++);
+  static uint32_t t0_cnt;
+  task1_flag = t0_cnt;
+  printf("T0:%d\r\n", t0_cnt++);
 }
 void Task1(void)
 {
-    static uint32_t t1_cnt;
-    printf("T1:%d\r\n",t1_cnt++);
+  static uint32_t t1_cnt;
+  printf("T1:%d\r\n",t1_cnt++);
 }
 
-tp_frame_t tp_frame;
+tp_frame_t tpf;
 tpf_tasklist_t tpf_tasklist[] = {
       {NULL, 0, 0, 0}, // dont change and use this var
 //(taskfunc),(task_runtime),task_state,always 0
@@ -116,11 +158,19 @@ tpf_tasklist_t tpf_tasklist[] = {
 int main(void)
 {
   GET_TASK_NUMS_(tpf_tasklist);
-  TPF_Init(&tp_frame, tpf_tasklist);
+  TPF_Init(&tpf, tpf_tasklist);
 
   while(1)
   {
-    TPF_Handler(&tp_frame);
+    TPF_Handler(&tpf);
+    if (10 == task1_flag)
+    {
+      TPF_Suspend(&tpf, 1);
+    }
+    if (20 == task1_flag)
+    {
+      TPF_Resume(&tpf, 1);
+    }
   }
 }
 ```
