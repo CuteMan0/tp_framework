@@ -75,7 +75,7 @@ func
       --- pstpfhandle     --- TPF句柄
       --- psatasklist     --- 任务表句柄
 
-  框架处理
+  框架事件处理
   --- TPF_Handler(tp_frame_t * )
     params
       --- pstpfhandle     --- TPF句柄
