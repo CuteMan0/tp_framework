@@ -124,6 +124,8 @@ func
 
 ### 演示模板
 
+![](/pic/tpf_demo.gif)
+
 ```C
 /*----------------------  it.c  ----------------------*/
 void SysTick_Handler()//TIMx_IRQHandler()
