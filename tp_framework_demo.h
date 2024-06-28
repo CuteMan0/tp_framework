@@ -33,8 +33,8 @@ tpf_tasklist_t tpf_tasklist[] = {
 
 typedef enum
 {
-  TP_TASK_READY,
-  TP_TASK_SUSPEND
+  TPF_TASK_READY,
+  TPF_TASK_SLEEP
 } TPF_STATE_E;
 
 typedef struct
