@@ -24,8 +24,8 @@
 tpf_tasklist_t tpf_tasklist[] = {
       {NULL, 0, 0, 0}, // dont change and use this var
 //(taskfunc),(task_runtime),task_state,always 0
-      {Task0, 1000, TP_TASK_READY, 0},
-      {Task1, 200, TP_TASK_READY, 0}
+      {Task0, 1000, TPF_TASK_READY, 0},
+      {Task1, 200, TPF_TASK_READY, 0}
 //      ...
 };
 ************************************************************************
