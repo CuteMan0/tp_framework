@@ -1,8 +1,8 @@
-# tp_framework_demo
+# tp_framework
 
 ## 这是什么？
 
-**tp_framework_demo**是一个简易的**时间片轮询**裸机框架。支持**任务轮询**以及任务的**挂起**与**恢复**功能。
+**tp_framework**是一个简易的**时间片轮询**裸机框架。支持**任务轮询**以及任务的**挂起**与**恢复**功能。
 
 **时间片轮询**是通过一个基本时钟（**systick** or **timer**），针对不同的任务对 CPU 的处理时间进行时分复用，根据任务列表顺序执行。避免单任务长时间占用 CPU，有一定的实时性 ~~微弱~~。
 
@@ -10,9 +10,9 @@
 
 ## 使用说明
 
-### 如何将**tp_framework_demo**添加入工程
+### 如何将**tp_framework**添加入工程
 
-- 将 tp_framework_demo.c/h 存放到工程路径下。
+- 将 tp_framework.c/h 存放到工程路径下。
 
 - 周期性调用 `TPF_Timebase_Int()`函数，如在**systick** or **timer**的中断中。
 
@@ -115,7 +115,7 @@ func
 
 ### 演示模板
 
-![image](https://github.com/CuteMan0/tp_framework_demo/blob/main/pic/tpf_demo.gif)
+![image](https://github.com/CuteMan0/tp_framework/blob/main/pic/tpf_demo.gif)
 
 ```C
 /*----------------------  it.c  ----------------------*/

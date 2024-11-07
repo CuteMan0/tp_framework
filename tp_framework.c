@@ -10,7 +10,7 @@
  * ************************************************************************
  */
 
-#include "tp_framework_demo.h"
+#include "tp_framework.h"
 #include <assert.h>
 
 static volatile uint32_t newtick;
