@@ -4,7 +4,7 @@
 
 **tp_framework_demo**是一个简易的**时间片轮询**裸机框架。支持**任务轮询**以及任务的**挂起**与**恢复**功能。
 
-**时间片轮询**是通过一个基本时钟（**systick** or **timer**），针对不同的任务对 CPU 的处理时间进行时分复用，根据任务列表顺序执行。避免单任务长时间占用 CPU，有一定的实时性~~不是很实时~~。
+**时间片轮询**是通过一个基本时钟（**systick** or **timer**），针对不同的任务对 CPU 的处理时间进行时分复用，根据任务列表顺序执行。避免单任务长时间占用 CPU，有一定的实时性 ~~微弱~~。
 
 ---
 
@@ -20,9 +20,7 @@
 
 - 创建 `tpf_tasklist_t` 实例作为任务表句柄，在表中填入任务函数及时间片。
 
-- 调用`GET_TASK_NUMS_()`宏，统计任务表的任务量。
-
-- 调用`TPF_Init()`函数，初始化框架句柄。
+- 调用`TPF_Init()`函数，并在最后一个参项位置调用`__GET_TASK_NUMS`宏，初始化框架。
 
 - 调用`TPF_Handler()`函数，进行任务轮询。
 
@@ -33,23 +31,21 @@
 
 ### 任务表结构
 
-- 表头固定为`{NULL, 0, 0, 0}`,用作统计任务量。
-
-- **任务序号**：从第一个表成员（非表头）开始从**0**自增。
+- **任务序号**：从第一个表成员开始从**0**自增。
 
 - 通过在任务表中创建、删除表成员来增、减任务，表成员的四个参数依次为：
   - 任务函数指针
   - 任务的时间片
   - 任务初始状态
-  - 上次运行时间
+  - 下次运行时间
 
 ```c
 typedef struct
 {
-  void (*pff)();
-  uint32_t runtick : 31;
-  TPF_STATE_E state : 1;
-  uint32_t entrytick;
+    void (*pff)();
+    uint32_t runtick : 31;
+    TPF_STATE_E state : 1;
+    uint32_t entrytick;
 } tpf_tasklist_t;
 ```
 
@@ -70,10 +66,11 @@ func
       --- newtick         --- 最新时基数
 
   框架初始化
-  --- TPF_Init(tp_frame_t * ,tpf_tasklist_t * )
+  --- TPF_Init(tp_frame_t * ,tpf_tasklist_t * ,uint8_t )
     params
       --- pstpfhandle     --- TPF句柄
-      --- psatasklist     --- 任务表句柄
+      --- pstasklist     --- 任务表句柄
+      --- tasknum         --- 任务数
 
   框架事件处理
   --- TPF_Handler(tp_frame_t * )
@@ -85,12 +82,6 @@ func
     params
       --- pstpfhandle     --- TPF句柄
       --- task_id         --- 任务序号
-      --- delay           --- 延时时间
-
-  延时框架内全部任务（非阻塞）
-  --- TPF_Global_Delay(tp_frame_t * , uint32_t )
-    params
-      --- pstpfhandle     --- TPF句柄
       --- delay           --- 延时时间
 
   挂起框架内某任务
@@ -113,7 +104,7 @@ func
 
 #### TPF_ErrorHandler
 
-当程序进入 `TPF_ErrorHandler()`函数时，可通过查看 `pftasklist` 和 `error` 定位错误。
+当程序进入 `TPF_ErrorHandler()`函数时，可通过查看 `pstasklist` 和 `error` 定位错误。
 
 ```
   error
@@ -148,10 +139,8 @@ void Task1(void)
   printf("T1:%d\r\n",t1_cnt++);
 }
 
-tp_frame_t tpf;
+tp_frame_t tpf;//create a tpf frame and tasklist
 tpf_tasklist_t tpf_tasklist[] = {
-      {NULL, 0, 0, 0}, // dont change and use this var
-//(taskfunc),(task_runtime),task_state,always 0
       {Task0, 1000, TPF_TASK_READY, 0},
       {Task1, 200, TPF_TASK_READY, 0}
 //      ...
@@ -159,8 +148,7 @@ tpf_tasklist_t tpf_tasklist[] = {
 
 int main(void)
 {
-  GET_TASK_NUMS_(tpf_tasklist);
-  TPF_Init(&tpf, tpf_tasklist);
+  TPF_Init(&tpf, tpf_tasklist, __GET_TASK_NUMS(tpf_tasklist));
 
   while(1)
   {
