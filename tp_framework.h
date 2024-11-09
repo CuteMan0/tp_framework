@@ -15,7 +15,6 @@
 
 #include "stdint.h"
 
-
 #define __GET_TASK_NUMS(x) sizeof(x) / sizeof(tpf_tasklist_t)
 
 // you should be create a global array of tasklist like this
