@@ -14,7 +14,6 @@
 #include "stdlib.h"
 #include <assert.h>
 
-
 #define __COUNT_CURR_OFFSET (uint32_t)pstpfhandle \
                             - (uint32_t)pstpfhandle->pftasklist
 #define __COUNT_TASK_OFFSET (tpf_to_list_offset - curr_address_offset) \
