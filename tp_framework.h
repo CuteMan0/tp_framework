@@ -14,7 +14,7 @@
 #define __TP_FRAMEWORK
 
 #include "stdint.h"
-#include "stdlib.h"
+
 
 #define __GET_TASK_NUMS(x) sizeof(x) / sizeof(tpf_tasklist_t)
 
@@ -23,8 +23,8 @@
 ************************************************************************
 tpf_tasklist_t tpf_tasklist[] = {
 //(taskfunc),(task_runtime),  (task_state)  ,(task_start_tick)
-  {Task0    ,     1000     ,  TPF_TASK_READY,        0       },
-  {Task1    ,     200      ,  TPF_TASK_READY,        0       }
+  {Task0    ,     1000     ,  TPF_TASK_READY,        0       }
+ ,{Task1    ,     200      ,  TPF_TASK_READY,        0       }
 //...
 };
 ************************************************************************
