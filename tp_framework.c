@@ -1,197 +1,163 @@
-/**
- * ************************************************************************
- *
- * @file tp_framework.c
- * @author wsx
- * @brief
- * 
- * ************************************************************************
- * @copyright Copyright (c) 2024 lovely-lily
- * ************************************************************************
- */
-
 #include "tp_framework.h"
-#include "stdlib.h"
-#include <assert.h>
 
-#define __COUNT_CURR_OFFSET (uint32_t)pstpfhandle \
-                            - (uint32_t)pstpfhandle->pftasklist
-#define __COUNT_TASK_OFFSET (tpf_to_list_offset - curr_address_offset) \
-                            / sizeof(tpf_tasklist_t)
-                                
-static volatile uint32_t newtick;
-// record the address offset , dont change it after init.
-static uint32_t tpf_to_list_offset;
-
-__attribute__((weak)) void TPF_ErrorHandler(tpf_tasklist_t *pstasklist,
-                                                          int8_t error)
+// 任务控制块结构
+typedef struct
 {
-    while (1)
+    TaskFunc func;       // 任务函数指针
+    uint32_t interval;   // 执行间隔
+    uint32_t last_run;   // 上次执行时间
+    uint32_t timeout;    // 超时时间
+    uint32_t start_time; // 任务开始执行时间
+    TaskState state;     // 任务状态
+    bool valid;          // 任务槽位是否有效
+} TaskControlBlock;
+
+#define MAX_TASKS 10       // 最大任务数量
+#define INVALID_TASK_ID -1 // 无效任务ID
+
+static TaskControlBlock task_list[MAX_TASKS];
+static volatile uint32_t system_tick = 0;
+static TimeoutCallback timeout_cb = NULL;
+
+static int find_free_slot(void)
+{
+    for (int i = 0; i < MAX_TASKS; i++)
     {
-        // please check any pointer of tp_framework
-        /*
-        error = 0   ------------    check task function pointer
-                -1  ------------    check tpf handle pointer        (TPF_Init)
-                -2  ------------    check tasklist pointer          (TPF_Init)
-        */
+        if (!task_list[i].valid)
+        {
+            return i;
+        }
+    }
+    return INVALID_TASK_ID;
+}
+
+// 检查任务ID是否有效
+static bool is_valid_task_id(int task_id)
+{
+    return (task_id >= 0 && task_id < MAX_TASKS && task_list[task_id].valid);
+}
+
+void Scheduler_Init(void)
+{
+    system_tick = 0;
+    timeout_cb = NULL;
+
+    for (int i = 0; i < MAX_TASKS; i++)
+    {
+        task_list[i].valid = false;
+        task_list[i].state = TASK_SUSPENDED;
     }
 }
 
-// run in your timer interrupt
-void TPF_Timebase_Int(void)
+int Scheduler_AddTask(TaskFunc func, uint32_t interval, uint32_t timeout)
 {
-    newtick++;
-}
-
-uint32_t TPF_GetTicks(void)
-{
-    return newtick;
-}
-
-int8_t TPF_Handler(tp_frame_t *pstpfhandle)
-{
-    for(uint32_t i = 0; i < pstpfhandle->tasknum; i++)
+    if (func == NULL || interval == 0)
     {
-       // check task func pointer
-        if (NULL == pstpfhandle->pftasklist->pff)
+        return INVALID_TASK_ID;
+    }
+
+    int task_id = find_free_slot();
+    if (task_id == INVALID_TASK_ID)
+    {
+        return INVALID_TASK_ID;
+    }
+
+    task_list[task_id].func = func;
+    task_list[task_id].interval = interval;
+    task_list[task_id].last_run = system_tick;
+    task_list[task_id].timeout = timeout;
+    task_list[task_id].state = TASK_READY;
+    task_list[task_id].valid = true;
+
+    return task_id;
+}
+
+bool Scheduler_DeleteTask(int task_id)
+{
+    if (!is_valid_task_id(task_id))
+    {
+        return false;
+    }
+
+    task_list[task_id].valid = false;
+    return true;
+}
+
+bool Scheduler_SuspendTask(int task_id)
+{
+    if (!is_valid_task_id(task_id))
+    {
+        return false;
+    }
+
+    task_list[task_id].state = TASK_SUSPENDED;
+    return true;
+}
+
+bool Scheduler_ResumeTask(int task_id)
+{
+    if (!is_valid_task_id(task_id))
+    {
+        return false;
+    }
+
+    task_list[task_id].state = TASK_READY;
+    task_list[task_id].last_run = system_tick; // 重置计时
+    return true;
+}
+
+TaskState Scheduler_GetTaskState(int task_id)
+{
+    if (!is_valid_task_id(task_id))
+    {
+        return TASK_SUSPENDED;
+    }
+    return task_list[task_id].state;
+}
+
+void Scheduler_Run(void)
+{
+    for (int i = 0; i < MAX_TASKS; i++)
+    {
+        if (!task_list[i].valid || task_list[i].state != TASK_READY)
         {
-            TPF_ErrorHandler(pstpfhandle->pftasklist, 0);
+            continue;
         }
 
-        if (newtick >= pstpfhandle->pftasklist->entrytick)
+        // 检查是否到达执行时间
+        if ((system_tick - task_list[i].last_run) >= task_list[i].interval)
         {
-            // update entry tick
-            pstpfhandle->pftasklist->entrytick += pstpfhandle->pftasklist->runtick;
+            task_list[i].state = TASK_RUNNING;
+            task_list[i].start_time = system_tick;
+            task_list[i].last_run = system_tick;
 
-            if (TPF_TASK_SLEEP != pstpfhandle->pftasklist->state)
+            // 执行任务
+            task_list[i].func();
+
+            // 检查是否超时
+            if (task_list[i].timeout > 0 &&
+                (system_tick - task_list[i].start_time) >= task_list[i].timeout)
             {
-                // task running
-                pstpfhandle->pftasklist->pff();
+                task_list[i].state = TASK_TIMEOUT;
+                if (timeout_cb != NULL)
+                {
+                    timeout_cb(i);
+                }
+            }
+            else
+            {
+                task_list[i].state = TASK_READY;
             }
         }
-        pstpfhandle->pftasklist++;
-        if(i == pstpfhandle->tasknum - 1)
-            pstpfhandle->pftasklist -= pstpfhandle->tasknum;
     }
-    
-    return 0;
 }
 
-int8_t TPF_Init(tp_frame_t *pstpfhandle,
-            tpf_tasklist_t *psatasklist,
-                        uint8_t tasknum)
+inline void Scheduler_TickUpdate(void)
 {
-    if (NULL == pstpfhandle)
-    {
-        TPF_ErrorHandler(NULL, -1);
-    }
-    if (NULL == psatasklist)
-    {
-        TPF_ErrorHandler(NULL, -2);
-    }
-
-    pstpfhandle->tasknum = tasknum;
-    pstpfhandle->pftasklist = psatasklist;
-    tpf_to_list_offset = (uint32_t)pstpfhandle - (uint32_t)psatasklist;
-
-    return 0;
+    system_tick++;
 }
 
-void TPF_Task_Delay(tp_frame_t *pstpfhandle,
-                            uint32_t task_id,
-                            uint32_t delay)
+void Scheduler_SetTimeoutCallback(TimeoutCallback callback)
 {
-    assert(task_id<pstpfhandle->tasknum);
-    
-    if (NULL == pstpfhandle->pftasklist->pff)
-    {
-        TPF_ErrorHandler(pstpfhandle->pftasklist, 0);
-    }
-
-    // get now task offset of tpf
-    uint32_t curr_address_offset = __COUNT_CURR_OFFSET;
-    uint32_t task_offset = __COUNT_TASK_OFFSET;
-
-    // change target task
-    pstpfhandle->pftasklist -= task_offset;
-    pstpfhandle->pftasklist += task_id;
-
-    if (NULL == pstpfhandle->pftasklist->pff)
-    {
-        TPF_ErrorHandler(pstpfhandle->pftasklist, 0);
-    }
-
-    pstpfhandle->pftasklist->entrytick += delay;
-
-    // restore enter task
-    pstpfhandle->pftasklist -= task_id;
-    pstpfhandle->pftasklist += task_offset;
-}
-
-int8_t TPF_Suspend(tp_frame_t *pstpfhandle, uint32_t task_id)
-{
-    assert(task_id<pstpfhandle->tasknum);
-
-    if (NULL == pstpfhandle->pftasklist->pff)
-    {
-        TPF_ErrorHandler(pstpfhandle->pftasklist, 0);
-    }
-    
-    // get now task offset of tpf
-    uint32_t curr_address_offset = __COUNT_CURR_OFFSET;
-    uint32_t task_offset = __COUNT_TASK_OFFSET;
-
-    // change target task
-    pstpfhandle->pftasklist -= task_offset;
-    pstpfhandle->pftasklist += task_id;
-
-    if (NULL == pstpfhandle->pftasklist->pff)
-    {
-        TPF_ErrorHandler(pstpfhandle->pftasklist, 0);
-    }
-
-    if (TPF_TASK_SLEEP != pstpfhandle->pftasklist->state)
-    {
-        pstpfhandle->pftasklist->state = TPF_TASK_SLEEP;
-    }
-
-    // restore enter task
-    pstpfhandle->pftasklist -= task_id;
-    pstpfhandle->pftasklist += task_offset;
-
-    return 0;
-}
-
-int8_t TPF_Resume(tp_frame_t *pstpfhandle, uint32_t task_id)
-{
-    assert(task_id<pstpfhandle->tasknum);
-    
-    if (NULL == pstpfhandle->pftasklist->pff)
-    {
-        TPF_ErrorHandler(pstpfhandle->pftasklist, 0);
-    }
-
-    // get now task offset of tpf
-    uint32_t curr_address_offset = __COUNT_CURR_OFFSET;
-    uint32_t task_offset = __COUNT_TASK_OFFSET;
-
-    // change target task
-    pstpfhandle->pftasklist -= task_offset;
-    pstpfhandle->pftasklist += task_id;
-
-    if (NULL == pstpfhandle->pftasklist->pff)
-    {
-        TPF_ErrorHandler(pstpfhandle->pftasklist, 0);
-    }
-
-    if (TPF_TASK_READY != pstpfhandle->pftasklist->state)
-    {
-        pstpfhandle->pftasklist->state = TPF_TASK_READY;
-    }
-
-    // restore enter task
-    pstpfhandle->pftasklist -= task_id;
-    pstpfhandle->pftasklist += task_offset;
-
-    return 0;
+    timeout_cb = callback;
 }
