@@ -101,4 +101,4 @@ extern "C"
 }
 #endif
 
-#endif /* __SCHEDULER_H__ */
+#endif /* __TP_FRAMEWORK_H__ */
