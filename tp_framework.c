@@ -1,37 +1,35 @@
 #include "tp_framework.h"
 
-// ÈÎÎñ¿ØÖÆ¿é½á¹¹
+// ä»»åŠ¡æ§åˆ¶å—ç»“æ„
 typedef struct
 {
-    TaskFunc func;       // ÈÎÎñº¯ÊıÖ¸Õë
-    uint32_t interval;   // Ö´ĞĞ¼ä¸ô
-    uint32_t last_run;   // ÉÏ´ÎÖ´ĞĞÊ±¼ä
-    uint32_t timeout;    // ³¬Ê±Ê±¼ä
-    uint32_t start_time; // ÈÎÎñ¿ªÊ¼Ö´ĞĞÊ±¼ä
-    TaskState state;     // ÈÎÎñ×´Ì¬
-    bool valid;          // ÈÎÎñ²ÛÎ»ÊÇ·ñÓĞĞ§
+    TaskFunc func;       // ä»»åŠ¡å‡½æ•°æŒ‡é’ˆ
+    uint32_t interval;   // æ‰§è¡Œé—´éš”
+    uint32_t last_run;   // ä¸Šæ¬¡æ‰§è¡Œæ—¶é—´
+    uint32_t timeout;    // è¶…æ—¶æ—¶é—´
+    uint32_t start_time; // ä»»åŠ¡å¼€å§‹æ‰§è¡Œæ—¶é—´
+    TaskState state;     // ä»»åŠ¡çŠ¶æ€
+    bool valid;          // ä»»åŠ¡æ§½ä½æ˜¯å¦æœ‰æ•ˆ
 } TaskControlBlock;
 
-#define MAX_TASKS 10       // ×î´óÈÎÎñÊıÁ¿
-#define INVALID_TASK_ID -1 // ÎŞĞ§ÈÎÎñID
+#define MAX_TASKS       10 // æœ€å¤§ä»»åŠ¡æ•°é‡
+#define INVALID_TASK_ID -1 // æ— æ•ˆä»»åŠ¡ID
 
 static TaskControlBlock task_list[MAX_TASKS];
 static volatile uint32_t system_tick = 0;
-static TimeoutCallback timeout_cb = NULL;
+static TimeoutCallback timeout_cb    = NULL;
 
 static int find_free_slot(void)
 {
-    for (int i = 0; i < MAX_TASKS; i++)
-    {
-        if (!task_list[i].valid)
-        {
+    for (int i = 0; i < MAX_TASKS; i++) {
+        if (!task_list[i].valid) {
             return i;
         }
     }
     return INVALID_TASK_ID;
 }
 
-// ¼ì²éÈÎÎñIDÊÇ·ñÓĞĞ§
+// æ£€æŸ¥ä»»åŠ¡IDæ˜¯å¦æœ‰æ•ˆ
 static bool is_valid_task_id(int task_id)
 {
     return (task_id >= 0 && task_id < MAX_TASKS && task_list[task_id].valid);
@@ -40,10 +38,9 @@ static bool is_valid_task_id(int task_id)
 void Scheduler_Init(void)
 {
     system_tick = 0;
-    timeout_cb = NULL;
+    timeout_cb  = NULL;
 
-    for (int i = 0; i < MAX_TASKS; i++)
-    {
+    for (int i = 0; i < MAX_TASKS; i++) {
         task_list[i].valid = false;
         task_list[i].state = TASK_SUSPENDED;
     }
@@ -51,31 +48,28 @@ void Scheduler_Init(void)
 
 int Scheduler_AddTask(TaskFunc func, uint32_t interval, uint32_t timeout)
 {
-    if (func == NULL || interval == 0)
-    {
+    if (func == NULL || interval == 0) {
         return INVALID_TASK_ID;
     }
 
     int task_id = find_free_slot();
-    if (task_id == INVALID_TASK_ID)
-    {
+    if (task_id == INVALID_TASK_ID) {
         return INVALID_TASK_ID;
     }
 
-    task_list[task_id].func = func;
+    task_list[task_id].func     = func;
     task_list[task_id].interval = interval;
     task_list[task_id].last_run = system_tick;
-    task_list[task_id].timeout = timeout;
-    task_list[task_id].state = TASK_READY;
-    task_list[task_id].valid = true;
+    task_list[task_id].timeout  = timeout;
+    task_list[task_id].state    = TASK_READY;
+    task_list[task_id].valid    = true;
 
     return task_id;
 }
 
 bool Scheduler_DeleteTask(int task_id)
 {
-    if (!is_valid_task_id(task_id))
-    {
+    if (!is_valid_task_id(task_id)) {
         return false;
     }
 
@@ -85,8 +79,7 @@ bool Scheduler_DeleteTask(int task_id)
 
 bool Scheduler_SuspendTask(int task_id)
 {
-    if (!is_valid_task_id(task_id))
-    {
+    if (!is_valid_task_id(task_id)) {
         return false;
     }
 
@@ -96,20 +89,18 @@ bool Scheduler_SuspendTask(int task_id)
 
 bool Scheduler_ResumeTask(int task_id)
 {
-    if (!is_valid_task_id(task_id))
-    {
+    if (!is_valid_task_id(task_id)) {
         return false;
     }
 
-    task_list[task_id].state = TASK_READY;
-    task_list[task_id].last_run = system_tick; // ÖØÖÃ¼ÆÊ±
+    task_list[task_id].state    = TASK_READY;
+    task_list[task_id].last_run = system_tick; // é‡ç½®è®¡æ—¶
     return true;
 }
 
 TaskState Scheduler_GetTaskState(int task_id)
 {
-    if (!is_valid_task_id(task_id))
-    {
+    if (!is_valid_task_id(task_id)) {
         return TASK_SUSPENDED;
     }
     return task_list[task_id].state;
@@ -117,35 +108,28 @@ TaskState Scheduler_GetTaskState(int task_id)
 
 void Scheduler_Run(void)
 {
-    for (int i = 0; i < MAX_TASKS; i++)
-    {
-        if (!task_list[i].valid || task_list[i].state != TASK_READY)
-        {
+    for (int i = 0; i < MAX_TASKS; i++) {
+        if (!task_list[i].valid || task_list[i].state != TASK_READY) {
             continue;
         }
 
-        // ¼ì²éÊÇ·ñµ½´ïÖ´ĞĞÊ±¼ä
-        if ((system_tick - task_list[i].last_run) >= task_list[i].interval)
-        {
-            task_list[i].state = TASK_RUNNING;
+        // æ£€æŸ¥æ˜¯å¦åˆ°è¾¾æ‰§è¡Œæ—¶é—´
+        if ((system_tick - task_list[i].last_run) >= task_list[i].interval) {
+            task_list[i].state      = TASK_RUNNING;
             task_list[i].start_time = system_tick;
-            task_list[i].last_run = system_tick;
+            task_list[i].last_run   = system_tick;
 
-            // Ö´ĞĞÈÎÎñ
+            // æ‰§è¡Œä»»åŠ¡
             task_list[i].func();
 
-            // ¼ì²éÊÇ·ñ³¬Ê±
+            // æ£€æŸ¥æ˜¯å¦è¶…æ—¶
             if (task_list[i].timeout > 0 &&
-                (system_tick - task_list[i].start_time) >= task_list[i].timeout)
-            {
+                (system_tick - task_list[i].start_time) >= task_list[i].timeout) {
                 task_list[i].state = TASK_TIMEOUT;
-                if (timeout_cb != NULL)
-                {
+                if (timeout_cb != NULL) {
                     timeout_cb(i);
                 }
-            }
-            else
-            {
+            } else {
                 task_list[i].state = TASK_READY;
             }
         }
